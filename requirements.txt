@@ -1,0 +1,6 @@
+ortools>=9.10
+streamlit>=1.36,<2
+pandas>=2.2
+altair>=5.3
+anthropic>=0.40
+pytest>=8.0

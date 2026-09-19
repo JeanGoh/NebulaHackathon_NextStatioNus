@@ -1,0 +1,17 @@
+# Allowlist: do not send local secrets, input CSVs or schedule exports.
+**
+!Dockerfile
+!requirements.txt
+!app.py
+!src/
+!src/**
+!vendor/
+!vendor/trackspace/
+!vendor/trackspace/**
+!.streamlit/
+!.streamlit/config.toml
+!deploy/
+!deploy/start.sh
+**/__pycache__/
+**/*.pyc
+**/.DS_Store

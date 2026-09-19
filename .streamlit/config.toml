@@ -1,0 +1,42 @@
+# Generated from src/trackaccess/theme.py -- do not hand-edit.
+# Rebuild with: python -m trackaccess.theme
+
+[theme]
+base = "dark"
+primaryColor = "#3d7bff"
+backgroundColor = "#04070e"
+secondaryBackgroundColor = "#0b1424"
+textColor = "#e9f4ff"
+borderColor = "#1b2b45"
+dataframeBorderColor = "#1b2b45"
+dataframeHeaderBackgroundColor = "#0e1b2e"
+linkColor = "#2ff3d0"
+codeBackgroundColor = "#0e1b2e"
+chartCategoricalColors = ["#3d7bff", "#ff7a3d", "#2ff3d0", "#7c6cff", "#ffb23d", "#c6e84f"]
+
+[theme.dark]
+primaryColor = "#3d7bff"
+backgroundColor = "#04070e"
+secondaryBackgroundColor = "#0b1424"
+textColor = "#e9f4ff"
+borderColor = "#1b2b45"
+dataframeBorderColor = "#1b2b45"
+dataframeHeaderBackgroundColor = "#0e1b2e"
+linkColor = "#2ff3d0"
+codeBackgroundColor = "#0e1b2e"
+chartCategoricalColors = ["#3d7bff", "#ff7a3d", "#2ff3d0", "#7c6cff", "#ffb23d", "#c6e84f"]
+
+[theme.light]
+primaryColor = "#2154d6"
+backgroundColor = "#eef4fb"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#061020"
+borderColor = "#cfdcec"
+dataframeBorderColor = "#cfdcec"
+dataframeHeaderBackgroundColor = "#f5f9fd"
+linkColor = "#00937c"
+codeBackgroundColor = "#f5f9fd"
+chartCategoricalColors = ["#2154d6", "#d4551b", "#00937c", "#5a46e0", "#b7770a", "#6f8c12"]
+
+[server]
+maxUploadSize = 20

@@ -1,0 +1,19 @@
+# Same runtime allowlist as the Docker context. Never upload secrets.toml.
+**
+!Dockerfile
+!.dockerignore
+!.gcloudignore
+!requirements.txt
+!app.py
+!src/
+!src/**
+!vendor/
+!vendor/trackspace/
+!vendor/trackspace/**
+!.streamlit/
+!.streamlit/config.toml
+!deploy/
+!deploy/start.sh
+**/__pycache__/
+**/*.pyc
+**/.DS_Store

@@ -1,0 +1,22 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.DS_Store
+.env
+.env.*
+.streamlit/secrets.toml
+# Source-only submission: keep local test data and generated outputs out.
+PS1/
+out/
+submissions/
+uploads/
+*.csv
+*.zip
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.log
