@@ -918,7 +918,7 @@ if mode == "Plan a future horizon":
                                                           sorted((c.kind, c.week, c.where, c.severity,
                                                                   c.parties, c.detail) for c in confs))
                                                          ).encode()).hexdigest(), MODE),
-                           height=660)
+                           height=700)
             with st.expander(f"Show all {len(confs)} rule flag(s) as a table",
                              expanded=False):
                 st.dataframe(pd.DataFrame(conflict_rows(inst, confs)),
@@ -1020,7 +1020,7 @@ if mode == "Plan a future horizon":
                if name == best else
                f"<span style='font-size:11px;color:{MUTED}'>alternative</span>")
         col.markdown(
-            f"<div class='tile' style='height:100%'>{tag}"
+            f"<div class='tile scenario-card'>{tag}"
             f"<div style='font-size:16px;font-weight:600;margin:2px 0 6px'>{name}</div>"
             f"<div class='v' style='color:{GOOD if s['on_time'] == s['total'] else WARN}'>"
             f"{s['on_time']} of {s['total']}</div><div class='n'>contracts on time</div>"
@@ -1161,9 +1161,8 @@ _map_key = hashlib.md5(
           sorted((o.activity_id,o.week,o.location_id,o.co_share_group) for o in sub.occupancies))).encode()).hexdigest()
 embed_html(
     network_map(inst, sub, min(r["first_week"] for r in crows), _map_key, MODE, _late_kind),
-    # The isometric network is wide but also tall at desktop widths.  The old
-    # 820px iframe cropped its lower stations and warning pins.
-    height=1160)
+    # The map fits its available height; details and zoom stay inside the frame.
+    height=700)
 st.caption("Drag the week, or press play. Colour is the contract's priority; "
            "an amber outline marks nominal capacity; red marks work past its deadline. "
            "Amber ECLO and extra-access markers show scenario choices, not violations.")

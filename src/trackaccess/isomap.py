@@ -57,7 +57,7 @@ def lanes_for(inst: Instance) -> dict[tuple[str, str], float]:
         v += LINE_GAP - LANE_GAP
     return out
 
-VERSION = 10                 # bump when the drawing changes, to bust caches
+VERSION = 22                 # bump when the drawing changes, to bust caches
 FREE = "#dbe4ee"             # track with nothing booked on it
 PAL = {1: "#2a78d6", 2: "#eb6834", 3: "#1baf7a"}
 HUB = "#6b62c9"              # H01 / H02, the shared interchanges
@@ -306,22 +306,36 @@ def payload(inst: Instance, sub: Submission,
 
     labels = []
     for line, vs in lanes_of.items():
-        v = min(vs) - 0.72          # in the gap just outside this line's tracks
-        for i, st in enumerate(by_line.get(line, [])):
-            x, y = _pt(i, v, 0)
-            labels.append(dict(x=round(x, 1), y=round(y + 5, 1), t=st.station_id,
-                               a="middle", hub=bool(st.is_interchange)))
-        lx, ly = _pt(-1.5, (min(vs) + max(vs)) / 2, 0)
-        labels.append(dict(x=round(lx, 1), y=round(ly + 6, 1),
+        for st in by_line.get(line, []):
+            locations = [f"PLAT:{line}:{st.station_id}:{bound}"
+                         for lane_line, bound in LANES if lane_line == line
+                         and f"PLAT:{line}:{st.station_id}:{bound}" in anchors]
+            if not locations:
+                continue
+            x = sum(anchors[loc][0] for loc in locations) / len(locations)
+            y = sum(anchors[loc][1] for loc in locations) / len(locations)
+            labels.append(dict(x=round(x, 1), y=round(y, 1), t=st.station_id,
+                               a="middle", hub=bool(st.is_interchange),
+                               line=line, locations=locations))
+        # Put the heading above the row-entry labels, rather than far left.
+        first_points = [_pt(0, v, PLAT_Z1) for v in vs]
+        lx = min(p[0] for p in first_points) - 48
+        ly = min(p[1] for p in first_points) - 42
+        labels.append(dict(x=round(lx, 1), y=round(ly, 1),
                            t=inst.lines.get(line, line), a="end", big=True))
 
     lane_tags = []
     for (line, bound), v in LANES.items():
         if line not in lanes_of:
             continue
-        x, y = _pt(-0.72, v, DECK_Z1)
-        lane_tags.append(dict(x=round(x, 1), y=round(y + 4, 1),
-                              t=BOUND_WORD.get(bound, bound), a="end"))
+        first = next((anchors[f"PLAT:{line}:{st.station_id}:{bound}"]
+                      for st in by_line.get(line, [])
+                      if f"PLAT:{line}:{st.station_id}:{bound}" in anchors), None)
+        if first is None:
+            continue
+        lane_tags.append(dict(x=first[0], y=round(first[1] - 28, 1),
+                              target=first, line=line, bound=bound,
+                              t=f"{bound} · {BOUND_WORD.get(bound, bound)}", a="middle"))
 
     # A station that carries the same id on more than one line is an
     # interchange; link the two lines' nearest tracks wherever that happens.
@@ -465,14 +479,49 @@ _SHELL = """
 <style>
  :root { --ink:#0b0b0b; --muted:#52514e; --line:#e6e5e1; --alert:#e02424; }
  *{box-sizing:border-box}
+ html,body{margin:0;height:100%;overflow:hidden}
  #wrap{font-family:"Source Sans Pro",-apple-system,BlinkMacSystemFont,sans-serif;
        color:var(--ink);background:#f6f9fc;border:1px solid var(--line);
-       border-radius:12px;padding:12px 14px 6px}
+       border-radius:12px;padding:12px 14px 6px;height:100vh;
+       display:flex;flex-direction:column;gap:4px;overflow:hidden}
+ #wrap > :not(#map){flex-shrink:0}
+ #wrap:fullscreen{border-radius:0;width:100vw;height:100vh}
+ .map-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+ .map-tools button{font-size:12px;padding:5px 10px}
+ .map-tools .hint{font-size:12px;color:var(--muted)}
+ details summary{cursor:pointer;font-size:12px;font-weight:650;color:var(--muted)}
+ #banner details{width:100%}
+ #programme-details > summary{display:flex;align-items:center;gap:8px;
+   list-style:none;color:var(--ink);padding:8px 10px;border:1px solid var(--line);
+   border-radius:6px;font-size:13px}
+ #programme-details > summary::-webkit-details-marker{display:none}
+ #programme-details > summary::before{content:"↓";font-size:20px;line-height:1}
+ #programme-details[open] > summary::before{content:"↑"}
+ #programme-details > summary:hover{border-color:var(--muted)}
+ #programme-details > summary:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+ #banner details > .detail-body{max-height:110px;overflow:auto;padding-top:6px}
+ .detail-scroll-cue{width:100%;min-height:28px;margin-top:3px;padding:2px 8px;
+   background:transparent;color:var(--ink);font-size:12px}
+ .detail-scroll-cue:hover{background:transparent;text-decoration:underline}
+ .detail-scroll-cue[hidden]{display:none}
+ .detail-scroll-cue .arrow{display:inline-block;margin-right:7px;font-size:19px;
+   animation:scroll-hint 1.6s ease-in-out infinite}
+ @keyframes scroll-hint{0%,100%{transform:translateY(-2px)}50%{transform:translateY(3px)}}
+ @media(prefers-reduced-motion:reduce){.detail-scroll-cue .arrow{animation:none}}
+ #legend-details[open] #legend{max-height:78px;overflow:auto;padding-top:5px}
+ @media(max-width:600px){
+   #wrap{padding:8px}
+   .bar{gap:6px}
+   .track{min-width:120px}
+   .map-tools .hint{display:none}
+   #banner .hd{font-size:12px}
+ }
  #banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
          border-radius:10px;padding:10px 13px;margin-bottom:11px;font-size:14px}
  #banner.bad{background:#fff0f0;border:1.5px solid #f3b7b7;
              box-shadow:0 0 0 4px rgba(224,36,36,.07)}
  #banner .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;width:100%}
+ #banner .chip-toggle-row{flex-basis:100%;width:100%}
  #banner .row+.row{margin-top:8px;padding-top:9px;border-top:1px solid #f0d3d3}
  #banner .hd.lock{color:#3c4653}
  .chip.lock{border-color:#c2c9d2;color:#3c4653}
@@ -504,7 +553,9 @@ _SHELL = """
  .dt{font-size:12.5px;color:var(--muted);white-space:nowrap}
  .note{font-size:12.5px;color:var(--muted);margin:2px 0 8px}
  .alertbar{font-size:13.5px;font-weight:700;color:var(--alert);min-height:20px;margin:2px 0 4px}
- svg{width:100%;height:auto;display:block}
+ #map{width:100%;flex:1 1 0;min-height:0;display:block;touch-action:none}
+ #map.zoomed{cursor:grab}
+ #map.zoomed:active{cursor:grabbing}
  .bob{animation:bob 2.4s ease-in-out infinite}
  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
  .ring{animation:ring 1.8s ease-out infinite;
@@ -525,6 +576,14 @@ _SHELL = """
       <input type="range" id="wk" min="1" max="__HORIZON__" value="1" step="1"></span>
     <span class="wk" id="wklab">Week 1</span><span class="dt" id="dtlab"></span>
   </div>
+  <div class="map-tools" role="group" aria-label="Map view controls">
+    <button id="fit" type="button">Fit map</button>
+    <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+    <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+    <button id="fullscreen" type="button">Full screen</button>
+    <span class="hint" id="map-hint" role="status">Zoom in, then drag to explore</span>
+  </div>
+  <details id="legend-details"><summary>Map legend</summary>
   <div class="bar" id="legend" style="gap:16px">
     <span class="key"><i class="sw" style="background:#2a78d6"></i>P1 critical</span>
     <span class="key"><i class="sw" style="background:#eb6834"></i>P2 important</span>
@@ -536,8 +595,9 @@ _SHELL = """
     <span class="key"><i class="sw" style="background:#e08c1a;border-radius:50%"></i>amber plus = extra access-night bought here</span>
     <span class="key" style="opacity:.55"><i class="sw" style="background:#9aa3ae;border-radius:50%;opacity:.45"></i>faded = flagged in another week</span>
   </div>
+  </details>
   <div class="alertbar" id="alertbar"></div>
-  <svg id="map" viewBox="__VIEW__" xmlns="http://www.w3.org/2000/svg">
+  <svg id="map" viewBox="__VIEW__" preserveAspectRatio="xMidYMid meet" aria-label="Track network map" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
         <feDropShadow dx="0" dy="9" stdDeviation="9" flood-color="#0b2545" flood-opacity="0.13"/>
@@ -549,9 +609,9 @@ _SHELL = """
     </defs>
     <g id="scene" filter="url(#soft)"></g>
     <g id="links"></g>
-    <g id="labels"></g>
     <g id="ghosts"></g>
     <g id="markers"></g>
+    <g id="labels" style="pointer-events:none"></g>
   </svg>
 </div>
 <div id="tip"></div>
@@ -573,6 +633,57 @@ function kindOf(f){
 }
 const PAL = {1:"#2a78d6", 2:"#eb6834", 3:"#1baf7a"};
 const NS = "http://www.w3.org/2000/svg";
+const map = document.getElementById("map");
+const wrap = document.getElementById("wrap");
+const fullView = D.view.slice();
+let view = fullView.slice(), zoom = 1, drag = null;
+function setView(){
+  map.setAttribute("viewBox", view.join(" "));
+  map.classList.toggle("zoomed", zoom > 1);
+  document.getElementById("zoom-out").disabled = zoom <= 1;
+  document.getElementById("zoom-in").disabled = zoom >= 4;
+}
+function fitMap(){zoom = 1; view = fullView.slice(); setView();}
+function zoomMap(factor){
+  const next = Math.max(1, Math.min(4, zoom * factor));
+  if(next === 1){fitMap(); return;}
+  const cx = view[0] + view[2]/2, cy = view[1] + view[3]/2;
+  zoom = next;
+  view = [cx-fullView[2]/zoom/2, cy-fullView[3]/zoom/2,
+          fullView[2]/zoom, fullView[3]/zoom];
+  setView();
+}
+document.getElementById("fit").onclick = fitMap;
+document.getElementById("zoom-in").onclick = () => zoomMap(1.4);
+document.getElementById("zoom-out").onclick = () => zoomMap(1/1.4);
+map.addEventListener("pointerdown", event => {
+  if(zoom <= 1 || event.button !== 0) return;
+  const matrix = map.getScreenCTM();
+  if(!matrix) return;
+  drag = {x:event.clientX, y:event.clientY, view:view.slice(), scale:matrix.a};
+  map.setPointerCapture(event.pointerId);
+});
+map.addEventListener("pointermove", event => {
+  if(!drag) return;
+  view[0] = drag.view[0] - (event.clientX-drag.x)/drag.scale;
+  view[1] = drag.view[1] - (event.clientY-drag.y)/drag.scale;
+  setView();
+});
+map.addEventListener("pointerup", () => {drag = null;});
+map.addEventListener("pointercancel", () => {drag = null;});
+map.addEventListener("lostpointercapture", () => {drag = null;});
+document.getElementById("fullscreen").onclick = async () => {
+  try{
+    if(document.fullscreenElement) await document.exitFullscreen();
+    else await wrap.requestFullscreen();
+  }catch(error){
+    document.getElementById("map-hint").textContent = "Full screen is unavailable here; use + to zoom and drag.";
+  }
+};
+document.addEventListener("fullscreenchange", () => {
+  document.getElementById("fullscreen").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen";
+});
+fitMap();
 
 function shade(hex, f){
   const n = parseInt(hex.slice(1), 16);
@@ -605,16 +716,23 @@ for (const t of D.tiles){
 
 const labs = document.getElementById("labels");
 for (const L of D.labels){
+  if(!L.big){
+    const width = Math.max(42, L.t.length * 8 + 18);
+    labs.appendChild(el("rect", {x:L.x-width/2,y:L.y-12,width:width,height:24,rx:5,
+      fill:"#f6f9fc",stroke:"#6b62c9","stroke-width":1.4}));
+  }
   const t = el("text", {x:L.x, y:L.y, "text-anchor":L.a,
-    "font-size": L.big ? 20 : 13.5, "font-weight": L.big ? 700 : (L.hub ? 700 : 600),
-    fill: L.big ? "#0b0b0b" : (L.hub ? "#4a42a8" : "#52514e"),
-    stroke:"#f6f9fc", "stroke-width": L.big ? 5 : 3.5, "paint-order":"stroke fill",
+    "dominant-baseline":L.big ? "auto" : "central",
+    "font-size": L.big ? 20 : 13.5, "font-weight":700,
+    fill:"#0b0b0b",
+    stroke:"#f6f9fc", "stroke-width": L.big ? 5 : 2.5, "paint-order":"stroke fill",
     "stroke-linejoin":"round", "font-family":"inherit"});
   t.textContent = L.t; labs.appendChild(t);
 }
 for (const L of D.lanes){
   const t = el("text", {x:L.x, y:L.y, "text-anchor":(L.a || "start"),
-                        "font-size":12, fill:"#7d7d79", "font-style":"italic",
+                        "dominant-baseline":"central",
+                        "font-size":12, fill:"#0b0b0b", "font-weight":600,
                         stroke:"#f6f9fc", "stroke-width":3, "paint-order":"stroke fill",
                         "font-family":"inherit"});
   t.textContent = L.t; labs.appendChild(t);
@@ -624,11 +742,7 @@ const lnk = document.getElementById("links");
 for (const L of (D.links || [])){
   lnk.appendChild(el("line", {x1:L.x1, y1:L.y1, x2:L.x2, y2:L.y2,
     stroke:"#6b62c9", "stroke-width":2.4, "stroke-dasharray":"7 6", opacity:.75}));
-  const mx = (L.x1 + L.x2) / 2, my = (L.y1 + L.y2) / 2;
-  const c = el("text", {x:mx, y:my - 7, "text-anchor":"middle", "font-size":11.5,
-    fill:"#4a42a8", "font-weight":600, stroke:"#f6f9fc", "stroke-width":3.5,
-    "paint-order":"stroke fill", "font-family":"inherit"});
-  c.textContent = L.t + " interchange"; lnk.appendChild(c);
+  // Interchanges are identified on their station badges, not under flags.
 }
 
 // ---- the flag itself: a warning sign on a post, big enough to find at a glance
@@ -796,11 +910,22 @@ function addChips(row, list, cls){
   more.className = "chip" + (cls ? " " + cls : "");
   more.style.fontWeight = "500";
   more.textContent = "+ " + rest.length + " more";
+  more.type = "button";
+  more.setAttribute("aria-expanded", "false");
+  const extraChips = rest.map(make);
+  for (const chip of extraChips) chip.hidden = true;
   more.onclick = () => {
-    more.remove();
-    for (const e of rest) row.appendChild(make(e));
+    const expanded = more.getAttribute("aria-expanded") !== "true";
+    more.setAttribute("aria-expanded", String(expanded));
+    more.textContent = expanded ? "Show less" : "+ " + rest.length + " more";
+    for (const chip of extraChips) chip.hidden = !expanded;
   };
-  row.appendChild(more);
+  for (const chip of extraChips) row.appendChild(chip);
+  // Put the control on its own final row, below every visible programme.
+  const footer = document.createElement("div");
+  footer.className = "chip-toggle-row";
+  footer.appendChild(more);
+  row.appendChild(footer);
 }
 
 function bannerRow(list, locked){
@@ -903,6 +1028,41 @@ if (CONTESTED && AS.length){
 } else {
   banner.className = "ok";
   banner.textContent = "No mapped conflict flags.";
+}
+// Keep the headline visible. Programme chips are optional detail, never a
+// growing wall above the network or a reason to scroll the whole map.
+if(banner.children.length > 1){
+  const details = document.createElement("details");
+  details.id = "programme-details";
+  const summary = document.createElement("summary");
+  summary.textContent = "Expand programme details";
+  details.addEventListener("toggle", () => {
+    summary.textContent = details.open ? "Collapse programme details" : "Expand programme details";
+  });
+  const body = document.createElement("div");
+  body.className = "detail-body";
+  while(banner.children.length > 1) body.appendChild(banner.children[1]);
+  details.append(summary, body);
+  banner.appendChild(details);
+  const cue = document.createElement("button");
+  cue.type = "button";
+  cue.className = "detail-scroll-cue";
+  cue.hidden = true;
+  cue.innerHTML = '<span class="arrow" aria-hidden="true">↓</span>More details below';
+  cue.setAttribute("aria-label", "Scroll down for more programme details");
+  details.appendChild(cue);
+  function updateScrollCue(){
+    cue.hidden = !details.open || body.scrollHeight - body.clientHeight - body.scrollTop <= 2;
+  }
+  cue.onclick = () => body.scrollBy({top:Math.max(60, body.clientHeight * .8),
+    behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+  body.addEventListener("scroll", updateScrollCue, {passive:true});
+  body.addEventListener("click", () => requestAnimationFrame(updateScrollCue));
+  details.addEventListener("toggle", () => requestAnimationFrame(updateScrollCue));
+  new ResizeObserver(updateScrollCue).observe(body);
+  // Expanding a chip list changes scrollHeight without resizing its container.
+  new MutationObserver(() => requestAnimationFrame(updateScrollCue)).observe(body,
+    {subtree:true,attributes:true,childList:true,characterData:true});
 }
 const ticks = document.getElementById("ticks");
 for (const w of AW){

@@ -174,6 +174,26 @@ div[data-testid="stVerticalBlockBorderWrapper"] > div > div[style*="border"] {
   -webkit-text-fill-color: var(--ink) !important;
 }
 .tile { padding: 16px 18px; }
+/* Stretch only scenario-card columns; leave other columns and downloads alone.
+   The markdown wrapper grows, keeping the native preview buttons at the bottom. */
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .scenario-card) {
+  align-items: stretch;
+}
+[data-testid="stColumn"]:has(.scenario-card) > [data-testid="stVerticalBlock"] {
+  height: 100%;
+}
+[data-testid="stColumn"]:has(.scenario-card) [data-testid="stElementContainer"]:has(.scenario-card) {
+  flex: 1 1 auto; display: flex; flex-direction: column;
+}
+[data-testid="stColumn"]:has(.scenario-card) [data-testid="stMarkdown"]:has(.scenario-card),
+[data-testid="stColumn"]:has(.scenario-card) [data-testid="stMarkdownContainer"]:has(.scenario-card) {
+  flex: 1 1 auto; display: flex; flex-direction: column;
+}
+.scenario-card { flex: 1 1 auto; box-sizing: border-box; }
+@media (max-width: 640px) {
+  [data-testid="stColumn"]:has(.scenario-card) { width: 100%; flex: 1 1 100%; }
+  [data-testid="stColumn"]:has(.scenario-card) > [data-testid="stVerticalBlock"] { height: auto; }
+}
 .tile .k { font-size: 11px; letter-spacing: .10em; text-transform: uppercase; color: var(--muted); }
 .tile .v { font-size: 30px; font-weight: 700; line-height: 1.2;
            font-family: 'Space Grotesk', sans-serif; }
